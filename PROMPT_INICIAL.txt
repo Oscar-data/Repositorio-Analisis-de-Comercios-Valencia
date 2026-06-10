@@ -1,0 +1,65 @@
+🚀 DOCUMENTO BASE DE PROYECTO: GeoMarket-VLC (Versión Final)
+Asignatura: Evaluación, Despliegue y Monitorización de Modelos (EDM)
+
+Estado actual del proyecto: Datasets ya descargados y listos en el repositorio local.
+
+Objetivo: Establecer el marco de referencia técnico y el flujo de trabajo inicial para el desarrollo de nuestra aplicación interactiva (Streamlit / Shiny).
+
+🎯 1. Propósito de la Aplicación y Casos de Uso
+La aplicación web será una herramienta avanzada de Geomarketing e Inteligencia de Negocio Urbana para la ciudad de Valencia. La interfaz interactiva resolverá problemas urbanos reales dividiéndose en dos perfiles de usuario (vistas de la app):
+
+Perfil A: El Emprendedor Local (Optimización Comercial)
+
+Problema: El alto índice de fracaso al abrir un nuevo negocio debido a la falta de análisis del entorno y de la competencia.
+
+Solución: Un recomendador inteligente. El usuario selecciona un sector comercial y el sistema le sugiere los barrios óptimos de Valencia basándose en la baja competencia existente, la demanda potencial y la accesibilidad en transporte público.
+
+Perfil B: El Planificador Urbano / Ayuntamiento (Equidad y Sostenibilidad)
+
+Problema: La desertificación comercial (barrios habitados que carecen de una oferta mínima de servicios básicos) y las brechas de vulnerabilidad.
+
+Solución: Un panel analítico que monitoriza el censo de comercios por barrio. El sistema cruza la oferta actual con la población y la vulnerabilidad, clasificando automáticamente si la oferta de un barrio es "Insuficiente". Esto permite al Ayuntamiento planificar ayudas económicas o priorizar la conexión de transporte público hacia esos barrios desabastecidos.
+
+📊 2. Datos Disponibles e Integración (Ya descargados)
+Toda la información se unificará y cruzará a nivel de Barrio o Distrito utilizando los límites geométricos oficiales de la ciudad en formato GeoJSON para el renderizado del mapa coroplético interactivo. Los datos disponibles en el espacio de trabajo se estructuran en tres bloques:
+
+Oferta y Actividades: Zones d'activitats (censo y localización de comercios y negocios locales), Guals, Hotels, Monuments turístics y Recursos Turístics.
+
+Demanda y Contexto Social: Aparcaments per districtes-barris (de donde extraeremos la población/habitantes por zona) y la capa de Vulnerabilitat per barris 2021 (índices demográficos y socioeconómicos).
+
+Accesibilidad y Conectividad: Paradas de la EMT (autobuses), estaciones de FGV (Metrovalencia), Pàrquings, Aparcaments de bicicletes y disponibilidad en tiempo real de ValenBisi.
+
+🧠 3. Modelado y Métodos de Data Science (¡Buzón Abierto a Mejoras!)
+⚠️ CRÍTICO PARA EL EQUIPO: Las metodologías que se describen a continuación son una propuesta base estructurada según los temas de clase para asegurar los requisitos mínimos del profesor. Sin embargo, este apartado es 100% abierto. Podéis cambiar, expandir o proponer los métodos de Machine Learning que queráis. ¡Cualquier sugerencia de mejora, técnica alternativa o nueva propuesta analítica es más que bienvenida para hacer el proyecto más potente!
+
+A. Clasificación de Insuficiencia y Tratamiento del Desbalanceo
+Enfoque inicial sugerido: Evaluar la densidad comercial por habitante en cada barrio. Si un barrio cae por debajo de un umbral crítico en relación a su población y vulnerabilidad, se clasifica como "Oferta Insuficiente" (Clase 1), y si está abastecido como "Oferta Suficiente" (Clase 0).
+
+Conexión con el Tema 1 (Model Evaluation): Los barrios con desabastecimiento crítico serán una minoría (datos desbalanceados). Justificaremos ante el profesor que no evaluamos el modelo con un simple Accuracy, sino que optimizaremos la Matriz de Confusión, curvas ROC/AUC y el F1-Score. Explicaremos que un Falso Negativo (clasificar un barrio desértico como "suficiente" y no enviarle recursos) tiene un coste de penalización social muy elevado.
+
+B. Ensembles e Hibridación para el Score de Idoneidad
+Enfoque inicial sugerido: Diseñar un modelo predictivo híbrido o un Ensemble (Voting/Stacking) que combine las estimaciones del censo de actividades comerciales con las métricas de accesibilidad.
+
+Conexión con el Tema 2 (Hybrid Models): Aplicaremos el principio de la "Sabiduría de las Masas" (Wisdom of Crowds), combinando las salidas de múltiples modelos base independientes (como árboles de decisión y regresiones regularizadas Lasso/Ridge o Random Forest) para reducir la varianza de la predicción y ofrecer un índice de éxito de localización comercial mucho más robusto para el emprendedor.
+
+C. Inteligencia Artificial Explicable (XAI) para la Planificación
+Enfoque inicial sugerido: Cuando el panel del Ayuntamiento marque un barrio en color rojo debido a "Oferta Insuficiente", la app justificará la decisión de forma transparente y visual.
+
+Conexión con el Tema 3 (Reliable Models): Implementaremos metodologías Model-Agnostic (gráficos de importancia de variables o aproximaciones locales tipo SHAP / LIME). Al hacer clic en un barrio, el sistema desplegará un panel explicando los pesos de las variables en la alerta (ej. +50% por Déficit de Locales de Alimentación, +30% por Alta Densidad de Población, -20% por Buena Conexión de Bus). Esto garantiza la interpretabilidad y fiabilidad del modelo.
+
+D. Simulación de Escenarios y Robustez (Seguridad y Causalidad)
+Enfoque inicial sugerido: Añadir controles interactivos (sliders) para que el usuario simule cambios en la infraestructura urbana de Valencia y ver el impacto inmediato en los modelos.
+
+Conexión con el Tema 3 (Security & Causality): El usuario podrá simular escenarios (ej. "¿Qué pasa con el score de este barrio desabastecido si el Ayuntamiento añade 3 paradas de autobús?"), abriendo el análisis de Causalidad frente a la simple correlación. Además, se discutirá en el trabajo la robustez del modelo ante datos anómalos o intentos de manipulación maliciosa de los inventarios públicos (Adversarial ML / Evasion Attacks).
+
+E. Arquitectura de Despliegue en Producción
+Enfoque inicial sugerido: La aplicación se desplegará en la nube (Streamlit Community Cloud o ShinyApps.io) ejecutando el código e interactuando en tiempo real con el usuario.
+
+Conexión con el Tema 5 (Model Deployment): Diseñaremos un despliegue del lado del servidor con una arquitectura basada en Streaming / API. El pipeline procesará la inferencia de los modelos en tiempo real con baja latencia. Plantearemos la solución bajo el ciclo de vida de ModelOps, evaluando cómo monitorizar el Data Drift o Concept Drift si las licencias de comercios o los patrones de población de los barrios cambian drásticamente en el futuro.
+
+🛠️ 4. Siguientes Pasos Operativos para el Grupo
+Pipeline de Unión de Datos: Escribir el script inicial para cruzar los archivos CSV tabulares con las geometrías de los barrios del archivo GeoJSON usando pandas / geopandas en Python o sf / tidyverse en R.
+
+Esqueleto de la Interfaz Web: Maquetar la aplicación interactiva básica pintando el mapa de Valencia y habilitando el selector de perfiles (Emprendedor / Planificador Urbano).
+
+Lluvia de Ideas de Modelado: Revisar el punto 3 de este documento y proponer en el grupo qué algoritmos específicos preferís testear o qué métricas de corte podemos inventar para definir la "insuficiencia" comercial. ¡A por el proyecto!
