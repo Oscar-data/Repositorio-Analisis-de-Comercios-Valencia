@@ -499,12 +499,13 @@ with tab_diag:
             margin=dict(l=10, r=10, t=10, b=10),
             paper_bgcolor="white",
             plot_bgcolor="white",
-            xaxis=dict(title="Nº locales", showgrid=True, gridcolor="#E8EDF5"),
-            yaxis=dict(title=""),
-            font=dict(family="Inter", size=11, color=COLORS["text_primary"]),
+            xaxis=dict(title="Nº locales", showgrid=True, gridcolor="#E8EDF5",
+                    tickfont=dict(color="#0F1B2D")),
+            yaxis=dict(title="", tickfont=dict(color="#0F1B2D", size=11)),
+            font=dict(family="Inter", size=11, color="#0F1B2D"),
         )
-        st.plotly_chart(fig_bar, use_container_width=True)
-
+        st.plotly_chart(fig_bar, use_container_width=True) 
+        
     with col_mapa:
         st.markdown("### Mapa coroplético de Valencia")
 
@@ -566,12 +567,13 @@ with tab_emp:
 
     with col_ctrl3:
         st.markdown("&nbsp;", unsafe_allow_html=True)
-        st.markdown(
-            f"<div style='background:{COLORS['bg_subtle']};padding:10px 14px;"
-            f"border-radius:8px;border-left:3px solid {COLORS['accent']};font-size:12px;'>"
-            f"<b>Sector activo:</b><br/>{sector_label}</div>",
-            unsafe_allow_html=True
-        )
+    st.markdown(
+        f"<div style='background:{COLORS['bg_subtle']};padding:10px 14px;"
+        f"border-radius:8px;border-left:3px solid {COLORS['accent']};font-size:12px;"
+        f"color:{COLORS['text_primary']};'>"
+        f"<b>Sector activo:</b><br/>{sector_label}</div>",
+        unsafe_allow_html=True
+    )
 
     # Pesos según estrategia
     presets = {
@@ -673,8 +675,10 @@ with tab_emp:
             margin=dict(l=10, r=40, t=10, b=10),
             paper_bgcolor="white", plot_bgcolor="white",
             xaxis=dict(title="Contribución al score", range=[0, max(componentes.values())*1.25],
-                       showgrid=True, gridcolor="#E8EDF5"),
-            font=dict(family="Inter", size=11),
+                    showgrid=True, gridcolor="#E8EDF5",
+                    tickfont=dict(color="#0F1B2D")),
+            yaxis=dict(tickfont=dict(color="#0F1B2D", size=11)),
+            font=dict(family="Inter", size=11, color="#0F1B2D"),
         )
         st.plotly_chart(fig_desg, use_container_width=True)
 
@@ -794,12 +798,13 @@ with tab_plan:
         ))
         fig_shap.update_layout(
             height=420,
-            margin=dict(l=10, r=40, t=10, b=10),
+            margin=dict(l=150, r=40, t=10, b=10),
             paper_bgcolor="white", plot_bgcolor="white",
             xaxis=dict(title="Impacto SHAP (→ insuficiente)", zeroline=True,
-                       zerolinecolor=COLORS["text_primary"], showgrid=True, gridcolor="#E8EDF5"),
-            yaxis=dict(title=""),
-            font=dict(family="Inter", size=11),
+                    zerolinecolor=COLORS["text_primary"], showgrid=True, gridcolor="#E8EDF5",
+                    tickfont=dict(color="#0F1B2D")),
+            yaxis=dict(title="", tickfont=dict(color="#0F1B2D", size=11)),
+            font=dict(family="Inter", size=11, color="#0F1B2D"),
         )
         st.plotly_chart(fig_shap, use_container_width=True)
 
