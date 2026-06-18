@@ -340,46 +340,186 @@ def crear_mapa_coropletico(gdf, df_valores, columna_valor, columna_etiqueta="nom
     return m
 
 
+def grafico_radar_comparativo(df, nombre_barrio):
+    """Gráfico radar que superpone el barrio seleccionado (color acento) sobre
+    la media de todos los barrios (relleno gris).
+    """
+    # Cambiamos la búsqueda para que sea por la columna 'nombre'
+    row = df[df["nombre"] == nombre_barrio].iloc[0] if (df["nombre"] == nombre_barrio).any() else None
+    if row is None:
+        return None
+
+    dims_def = {
+        "Comercio total":      ("n_locales_total",            False, "locales"),
+        "Conexión transporte": ("accesibilidad_tp",            False, "pts accesibilidad"),
+        "Equipamiento":        ("n_equipamiento_municipal",    False, "equipamientos"),
+        "Demanda (pob.)":      ("poblacion",                   False, "hab."),
+        "Calidad zona":        ("Ind_Global",                  True,  "índice (invertido)"),
+    }
+
+    vals_barrio = []
+    vals_media  = []
+    hover_barrio = []
+    hover_media  = []
+
+    for label, (col, invertir, unidad) in dims_def.items():
+        serie   = df[col].fillna(df[col].mean())
+        s_min, s_max = serie.min(), serie.max()
+        rango = s_max - s_min if s_max != s_min else 1
+
+        # Valor del barrio
+        val_real = row[col] if pd.notna(row[col]) else serie.mean()
+        norm_b = (val_real - s_min) / rango * 100
+        if invertir:
+            norm_b = 100 - norm_b
+        norm_b = float(np.clip(norm_b, 0, 100))
+        vals_barrio.append(norm_b)
+        hover_barrio.append(f"{val_real:,.2f} {unidad}" if invertir else f"{val_real:,.0f} {unidad}")
+
+        # Media del dataset
+        val_mean = serie.mean()
+        norm_m = (val_mean - s_min) / rango * 100
+        if invertir:
+            norm_m = 100 - norm_m
+        norm_m = float(np.clip(norm_m, 0, 100))
+        vals_media.append(norm_m)
+        hover_media.append(f"{val_mean:,.2f} {unidad}" if invertir else f"{val_mean:,.0f} {unidad}")
+
+    labels = list(dims_def.keys())
+
+    fig = go.Figure()
+
+    # Traza media (gris de fondo)
+    fig.add_trace(go.Scatterpolar(
+        r=vals_media + [vals_media[0]],
+        theta=labels + [labels[0]],
+        fill="toself",
+        fillcolor="rgba(92, 107, 127, 0.18)",
+        line=dict(color="rgba(92, 107, 127, 0.55)", width=2, dash="dot"),
+        name="Media Valencia",
+        hovertemplate="<b>%{theta}</b><br>Media: %{customdata}<extra></extra>",
+        customdata=hover_media + [hover_media[0]],
+    ))
+
+    # Traza barrio seleccionado (acento naranja)
+    fig.add_trace(go.Scatterpolar(
+        r=vals_barrio + [vals_barrio[0]],
+        theta=labels + [labels[0]],
+        fill="toself",
+        fillcolor="rgba(232, 131, 58, 0.22)",
+        line=dict(color=COLORS["accent"], width=2.5),
+        name=row["nombre"],
+        hovertemplate="<b>%{theta}</b><br>%{customdata}<extra></extra>",
+        customdata=hover_barrio + [hover_barrio[0]],
+    ))
+
+    fig.update_layout(
+        polar=dict(
+            radialaxis=dict(
+                visible=True,
+                range=[0, 100],
+                tickvals=[0, 25, 50, 75, 100],
+                ticktext=["mín", "25%", "50%", "75%", "máx"],
+                tickfont=dict(size=9, color="#5C6B7F"),
+                gridcolor="#E8EDF5",
+            ),
+            angularaxis=dict(
+                tickfont=dict(size=11, color=COLORS["text_primary"]),
+                gridcolor="#E8EDF5",
+            ),
+        ),
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            x=0.5, xanchor="center",
+            y=-0.12,
+            font=dict(size=11, color=COLORS["text_primary"]),
+        ),
+        height=360,
+        margin=dict(l=50, r=50, t=30, b=50),
+        paper_bgcolor="white",
+    )
+    return fig
+
 def grafico_radar_barrio(df, codbarrio, sector=None):
-    """Gráfico radar con los KPIs del barrio."""
+    """Gráfico radar con los KPIs del barrio.
+    
+    Cada eje se normaliza de forma independiente (0 = mínimo del dataset,
+    100 = máximo del dataset para ESA variable), de modo que un barrio con
+    el valor máximo en cualquier dimensión llega siempre al borde exterior,
+    independientemente de la escala real de cada variable.
+    """
     row = df[df["codbarrio"] == codbarrio].iloc[0] if (df["codbarrio"] == codbarrio).any() else None
     if row is None:
         return None
 
-    # Normalizar dimensiones (min-max sobre todo el dataset)
-    dims = {
-        "Comercio total":    df["n_locales_total"],
-        "Conexión transporte": df["accesibilidad_tp"],
-        "Equipamiento":      df["n_equipamiento_municipal"],
-        "Demanda (pob.)":    df["poblacion"],
-        "Calidad zona":      -df["Ind_Global"].fillna(df["Ind_Global"].mean()),
+    # Definir dimensiones: (columna_df, invertir, label_hover)
+    # invertir=True cuando menor valor = mejor (ej: vulnerabilidad)
+    dims_def = {
+        "Comercio total":      ("n_locales_total",             False, "locales"),
+        "Conexión transporte": ("accesibilidad_tp",            False, "pts accesibilidad"),
+        "Equipamiento":        ("n_equipamiento_municipal",    False, "equipamientos"),
+        "Demanda (pob.)":      ("poblacion",                   False, "hab."),
+        "Calidad zona":        ("Ind_Global",                  True,  "índice (invertido)"),
     }
-    valores = []
-    for label, serie in dims.items():
+
+    valores_norm  = []   # valor normalizado 0-100 para cada eje
+    valores_hover = []   # texto con el valor real para el tooltip
+
+    for label, (col, invertir, unidad) in dims_def.items():
+        serie = df[col].fillna(df[col].mean())
         s_min, s_max = serie.min(), serie.max()
+        val_real = row[col] if pd.notna(row[col]) else serie.mean()
+
         if s_max - s_min == 0:
-            valores.append(50)
+            norm = 50.0
         else:
-            v = (row[serie.name] - s_min) / (s_max - s_min) * 100 if serie.name in row.index else 50
-            valores.append(v if pd.notna(v) else 50)
+            norm = (val_real - s_min) / (s_max - s_min) * 100
+            if invertir:
+                norm = 100 - norm   # invertir: menor Ind_Global → mejor → más hacia el exterior
+
+        norm = float(np.clip(norm, 0, 100))
+        valores_norm.append(norm)
+
+        # Texto de hover: valor real + rango del dataset
+        if invertir:
+            hover_txt = f"{val_real:.2f} {unidad}<br>rango dataset: [{s_min:.2f}, {s_max:.2f}]"
+        else:
+            hover_txt = f"{val_real:,.0f} {unidad}<br>rango dataset: [{s_min:,.0f}, {s_max:,.0f}]"
+        valores_hover.append(hover_txt)
+
+    labels = list(dims_def.keys())
 
     fig = go.Figure()
     fig.add_trace(go.Scatterpolar(
-        r=valores + [valores[0]],
-        theta=list(dims.keys()) + [list(dims.keys())[0]],
+        r=valores_norm + [valores_norm[0]],
+        theta=labels + [labels[0]],
         fill="toself",
-        fillcolor=f"rgba(232, 131, 58, 0.25)",
+        fillcolor="rgba(232, 131, 58, 0.25)",
         line=dict(color=COLORS["accent"], width=2.5),
         name=row["nombre"],
+        hovertemplate="<b>%{theta}</b><br>%{customdata}<extra></extra>",
+        customdata=valores_hover + [valores_hover[0]],
     ))
+
     fig.update_layout(
         polar=dict(
-            radialaxis=dict(visible=True, range=[0, 100], tickfont=dict(size=10)),
-            angularaxis=dict(tickfont=dict(size=11, color=COLORS["text_primary"])),
+            radialaxis=dict(
+                visible=True,
+                range=[0, 100],
+                tickvals=[0, 25, 50, 75, 100],
+                ticktext=["mín", "25%", "50%", "75%", "máx"],
+                tickfont=dict(size=9, color="#5C6B7F"),
+                gridcolor="#E8EDF5",
+            ),
+            angularaxis=dict(
+                tickfont=dict(size=11, color=COLORS["text_primary"]),
+                gridcolor="#E8EDF5",
+            ),
         ),
         showlegend=False,
         height=320,
-        margin=dict(l=40, r=40, t=20, b=20),
+        margin=dict(l=50, r=50, t=30, b=30),
         paper_bgcolor="white",
     )
     return fig
@@ -529,6 +669,85 @@ with tab_diag:
                                        titulo_leyenda="Paradas EMT + Metro×2")
 
         st_folium(m, width=None, height=540, returned_objects=[])
+
+    # ── Rankings: vulnerabilidad y desabastecimiento ─────────────────────────
+    st.markdown("---")
+    col_vuln, col_ratio = st.columns(2)
+
+    with col_vuln:
+        st.markdown("### 🔴 Barrios más vulnerables")
+        st.markdown(
+            "Ordenados por el **Índice Global de Vulnerabilidad** "
+            "(valores bajos = mayor vulnerabilidad socioeconómica)."
+        )
+        df_vuln = (
+            df[["nombre", "Ind_Global", "poblacion"]]
+            .dropna(subset=["Ind_Global"])
+            .sort_values("Ind_Global")
+            .head(10)
+            .reset_index(drop=True)
+        )
+        df_vuln.index += 1
+        df_vuln.columns = ["Barrio", "Índice Global", "Población"]
+        df_vuln["Índice Global"] = df_vuln["Índice Global"].round(2)
+        df_vuln["Población"] = df_vuln["Población"].apply(lambda x: f"{int(x):,}")
+
+        # Colorear filas según nivel de vulnerabilidad
+        def color_vuln(val):
+            try:
+                v = float(val)
+                if v < 2:   return "color: #B23B3B; font-weight:600"
+                elif v < 3: return "color: #D4A04C; font-weight:600"
+                else:        return "color: #2D7D5A"
+            except Exception:
+                return ""
+
+        st.dataframe(
+            df_vuln,
+            use_container_width=True,
+            column_config={
+                "Índice Global": st.column_config.NumberColumn(
+                    "Índice Global ↑ mejor",
+                    format="%.2f",
+                ),
+                "Población": st.column_config.TextColumn("Población"),
+            },
+        )
+
+    with col_ratio:
+        st.markdown("### 🏪 Barrios con mayor déficit comercial")
+        st.markdown(
+            "Ratio **habitantes por local comercial** — valores altos indican "
+            "escasez de oferta relativa a la demanda potencial."
+        )
+        df_ratio = df[["nombre", "poblacion", "n_locales_total"]].copy()
+        df_ratio = df_ratio[df_ratio["n_locales_total"] > 0].copy()
+        df_ratio["hab_por_local"] = (
+            df_ratio["poblacion"] / df_ratio["n_locales_total"]
+        ).round(1)
+        df_ratio = (
+            df_ratio.sort_values("hab_por_local", ascending=False)
+            .head(10)
+            .reset_index(drop=True)
+        )
+        df_ratio.index += 1
+        df_ratio = df_ratio[["nombre", "hab_por_local", "poblacion", "n_locales_total"]]
+        df_ratio.columns = ["Barrio", "Hab./local", "Población", "Locales"]
+        df_ratio["Población"] = df_ratio["Población"].apply(lambda x: f"{int(x):,}")
+        df_ratio["Locales"] = df_ratio["Locales"].apply(lambda x: f"{int(x)}")
+
+        st.dataframe(
+            df_ratio,
+            use_container_width=True,
+            column_config={
+                "Hab./local": st.column_config.NumberColumn(
+                    "Hab./local ↑ más déficit",
+                    format="%.1f",
+                ),
+                "Población": st.column_config.TextColumn("Población"),
+                "Locales": st.column_config.TextColumn("Locales"),
+            },
+        )
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -766,6 +985,57 @@ with tab_plan:
             </div>
             """, unsafe_allow_html=True)
 
+    # ── Gráfico de araña comparativo ────────────────────────────────────────
+    # ── Gráfico de araña comparativo ────────────────────────────────────────
+    if barrio_sel and "─" not in barrio_sel:
+        st.markdown("---")
+        st.markdown("### 🕸️ Perfil del barrio vs. media de Valencia")
+        st.markdown(
+            "Las dimensiones son las mismas que en el análisis del barrio recomendado. "
+            "El área **gris** representa la media de todos los barrios de Valencia; "
+            "el área **naranja** muestra el perfil del barrio seleccionado."
+        )
+        
+        # LLAMADA CORREGIDA: Pasamos 'barrio_sel' (el nombre estricto del selectbox)
+        fig_radar_plan = grafico_radar_comparativo(df_pred, barrio_sel)
+        
+        if fig_radar_plan:
+            col_radar_plan, col_radar_info = st.columns([1.2, 1])
+            with col_radar_plan:
+                st.plotly_chart(fig_radar_plan, use_container_width=True)
+            with col_radar_info:
+                dims_info = {
+                    "Comercio total":      ("n_locales_total",          False),
+                    "Conexión transporte": ("accesibilidad_tp",         False),
+                    "Equipamiento":        ("n_equipamiento_municipal", False),
+                    "Demanda (pob.)":      ("poblacion",                False),
+                    "Calidad zona":        ("Ind_Global",               True),
+                }
+                filas = []
+                for dim_label, (col_r, invertir) in dims_info.items():
+                    val_b = row_b[col_r] if pd.notna(row_b[col_r]) else df[col_r].mean()
+                    val_m = df[col_r].mean()
+                    diferencia = val_b - val_m
+                    if invertir:
+                        mejor = "✅" if diferencia < 0 else ("➖" if abs(diferencia) < 0.5 else "⚠️")
+                    else:
+                        mejor = "✅" if diferencia > 0 else ("➖" if abs(diferencia / (val_m + 1e-9)) < 0.05 else "⚠️")
+                    filas.append({
+                        "Dimensión": dim_label,
+                        "Barrio": f"{val_b:,.1f}",
+                        "Media VLC": f"{val_m:,.1f}",
+                        "vs. media": mejor,
+                    })
+                df_tabla = pd.DataFrame(filas)
+                st.markdown("##### Comparativa de valores reales")
+                st.dataframe(
+                    df_tabla,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "vs. media": st.column_config.TextColumn("vs. media", width="small"),
+                    },
+                )
     # Explicabilidad SHAP
     if barrio_sel and "─" not in barrio_sel:
         st.markdown("---")
