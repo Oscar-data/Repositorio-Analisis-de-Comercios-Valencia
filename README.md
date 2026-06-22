@@ -20,25 +20,45 @@ La plataforma integra datos abiertos del Ayuntamiento de Valencia (locales comer
 
 ---
 
-## Arquitectura del proyecto
+## Estructura del repositorio
 
+El repositorio está organizado en **3 ramas** separando código, datos y documentación:
+
+### `main` — Documentación
+Contiene únicamente este README.
+
+### `Código` — Notebooks y aplicación
 ```
-GeoMarket-VLC
-│
+├── app_3.py                          # App Streamlit interactiva
 ├── geomarket_vlc_pipeline_v5.ipynb   # Fase 1: ingesta y unión de fuentes geoespaciales
 ├── geomarket_vlc_modelado.ipynb      # Fase 2: entrenamiento de modelos y serialización
-├── app_3.py                          # Fase 3: app Streamlit interactiva
+├── datos_comercios.ipynb             # Exploración inicial de locales comerciales
+├── preprocesar_aparcamientos.py      # Script de preprocesado de aparcamientos
+└── requirements.txt                  # Dependencias del proyecto
+```
+
+### `Datos` — Fuentes de datos y modelos serializados
+```
+├── models/
+│   ├── modelo_rf.pkl                 # Random Forest final
+│   ├── modelo_xgb.pkl                # XGBoost final
+│   ├── modelo_stacking.pkl           # Stacking Ensemble (RF + XGBoost → LogReg)
+│   ├── shap_explainer.pkl            # TreeExplainer SHAP
+│   └── feature_names.pkl             # Lista de features del modelo
 │
-├── data/                             # Fuentes de datos (ver sección Datos)
-├── output/
-│   ├── geomarket_vlc_features.csv    # Tabla de features (generada por el pipeline)
-│   └── geomarket_vlc_barrios.geojson # Geometría de barrios (generada por el pipeline)
-└── models/
-    ├── modelo_rf.pkl                 # Random Forest final
-    ├── modelo_xgb.pkl                # XGBoost final
-    ├── modelo_stacking.pkl           # Stacking Ensemble (RF + XGBoost → LogReg)
-    ├── shap_explainer.pkl            # TreeExplainer SHAP
-    └── feature_names.pkl             # Lista de features del modelo
+├── geomarket_vlc_features.csv        # Tabla de features (output del pipeline)
+├── geomarket_vlc_barrios.geojson     # Geometría de barrios (output del pipeline)
+├── indice_turistico_por_barrio.csv   # Índice de presión turística por barrio
+│
+├── barris.json                       # Geometría base de barrios de Valencia
+├── locales_valencia.json             # Locales comerciales (fuente principal)
+├── emt_paradas.json                  # Paradas de autobús EMT
+├── fgv_bocas.json                    # Bocas de metro / FGV
+├── equipament_municipal.json         # Equipamiento municipal
+├── aparcamientos_barrios.csv         # Aparcamientos por barrio
+├── demografia_distritos.csv          # Demografía por distrito
+├── vulnerabilidad-por-barrios.csv    # Índices de vulnerabilidad socioeconómica
+└── airbnb_listings_limpio.csv.gz     # Listings Airbnb (base del índice turístico)
 ```
 
 El flujo es estrictamente secuencial: el **pipeline** exporta el CSV y el GeoJSON que consume el **notebook de modelado**, que a su vez serializa los `.pkl` que carga la **app** en tiempo de ejecución sin reentrenar nada.
