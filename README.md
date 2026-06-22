@@ -198,18 +198,6 @@ Todos los datos son de acceso abierto:
 
 ---
 
-## Contexto académico
-
-Este proyecto cubre los siguientes temas de la asignatura EDM:
-
-| Tema | Concepto | Aplicación |
-|------|----------|------------|
-| 1 | Model Evaluation con datos desbalanceados | F1 / ROC-AUC, StratifiedKFold, coste asimétrico de falsos negativos |
-| 2 | Ensemble y Hybrid Models | Stacking (RF + XGBoost → LogisticRegression) |
-| 3 | Explicabilidad XAI | SHAP TreeExplainer, importancia global y explicaciones locales |
-| 4 | Despliegue | App Streamlit lista para producción, carga de modelos serializados |
-
----
 
 ## Autores
 
