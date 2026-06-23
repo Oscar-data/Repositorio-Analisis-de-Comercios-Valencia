@@ -189,7 +189,8 @@ Todos los datos son de acceso abierto:
 - [Portal de datos abiertos del Ayuntamiento de Valencia](https://www.valencia.es/dadesobertes/)
 - [EMT Valencia — API de paradas](https://www.emtvalencia.es/)
 - [FGV — Ferrocarils de la Generalitat Valenciana](https://www.fgv.es/)
-
+- [Registros de Airbnb Valencia](https://insideairbnb.com/valencia/)
+  
 ---
 
 ## Tecnologías utilizadas
